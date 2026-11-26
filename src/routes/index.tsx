@@ -113,6 +113,10 @@ function Index() {
   const upd = (i: number, p: Partial<Question>) => setQuestions(questions.map((q, j) => (j === i ? { ...q, ...p } : q)));
 
   const printKey = () => window.print();
+  const [pCols, setPCols] = useStored("print-cols", () => 2);
+  const [pSize, setPSize] = useStored("print-size", () => 28);
+  const [pGap, setPGap] = useStored("print-gap", () => 8);
+  const [pVertical, setPVertical] = useStored("print-vertical", () => true);
 
   return (
     <>
@@ -184,6 +188,26 @@ function Index() {
             <span className="ml-auto text-sm text-muted-foreground">Total: <b>{score(active, []).max}</b> pts</span>
             <Button size="sm" variant="outline" onClick={printKey}><Printer className="mr-1 size-4" />Imprimir gabarito</Button>
           </div>
+          <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card p-4 text-sm">
+            <b className="w-full">Opções de impressão</b>
+            <label className="flex items-center gap-2">Colunas
+              <Input type="number" min={1} max={5} value={pCols} onChange={(e) => setPCols(Math.max(1, Math.min(5, Number(e.target.value) || 1)))} className="w-16" />
+            </label>
+            <label className="flex items-center gap-2">Tamanho
+              <Button size="sm" variant="outline" onClick={() => setPSize(Math.max(16, pSize - 4))}>−</Button>
+              <span className="w-8 text-center font-mono">{pSize}</span>
+              <Button size="sm" variant="outline" onClick={() => setPSize(Math.min(56, pSize + 4))}>+</Button>
+            </label>
+            <label className="flex items-center gap-2">Espaço entre linhas
+              <Button size="sm" variant="outline" onClick={() => setPGap(Math.max(0, pGap - 2))}>−</Button>
+              <span className="w-8 text-center font-mono">{pGap}</span>
+              <Button size="sm" variant="outline" onClick={() => setPGap(Math.min(40, pGap + 2))}>+</Button>
+            </label>
+            <label className="flex items-center gap-2">Ordem
+              <Button size="sm" variant={pVertical ? "default" : "outline"} onClick={() => setPVertical(true)}>Um abaixo do outro</Button>
+              <Button size="sm" variant={!pVertical ? "default" : "outline"} onClick={() => setPVertical(false)}>Lado a lado</Button>
+            </label>
+          </div>
           <div className="space-y-2">
             {active.map((q, i) => (
               <div key={i} className="flex items-center gap-2 rounded-md border bg-card p-2">
@@ -226,13 +250,20 @@ function Index() {
 
     {/* Folha exclusiva para impressão: invisível na tela, visível só ao imprimir */}
     <div className="hidden print:block">
-      <ol className="grid grid-cols-2 gap-x-12 gap-y-2">
+      <ol
+        className="grid gap-x-12"
+        style={{
+          rowGap: pGap,
+          gridTemplateColumns: `repeat(${pCols}, max-content)`,
+          ...(pVertical ? { gridAutoFlow: "column", gridTemplateRows: `repeat(${Math.ceil(active.length / pCols)}, auto)` } : {}),
+        }}
+      >
         {active.map((_, i) => (
-          <li key={i} className="flex items-center gap-3">
-            <span className="w-6 text-right font-mono text-sm font-bold">{i + 1}</span>
-            <span className="flex gap-2">
+          <li key={i} className="flex items-center" style={{ gap: pSize * 0.35 }}>
+            <span className="text-right font-mono font-bold" style={{ width: pSize, fontSize: pSize * 0.5 }}>{i + 1}</span>
+            <span className="flex" style={{ gap: pSize * 0.25 }}>
               {["A", "B", "C", "D", "E"].map((l) => (
-                <span key={l} className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-foreground font-mono text-xs font-bold">
+                <span key={l} className="flex items-center justify-center rounded-full border-2 border-foreground font-mono font-bold" style={{ width: pSize, height: pSize, fontSize: pSize * 0.42 }}>
                   {l}
                 </span>
               ))}
