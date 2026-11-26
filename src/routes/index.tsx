@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Camera, Download, ImageUp, Loader2, Save, Trash2, Check, X } from "lucide-react";
+import { Camera, Download, ImageUp, Loader2, Save, Trash2, Check, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -112,8 +112,11 @@ function Index() {
 
   const upd = (i: number, p: Partial<Question>) => setQuestions(questions.map((q, j) => (j === i ? { ...q, ...p } : q)));
 
+  const printKey = () => window.print();
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <>
+    <main className="mx-auto max-w-3xl px-4 py-8 print:hidden">
       <header className="mb-6">
         <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-destructive"><Check className="size-3" />Corretor</p>
         <h1 className="text-4xl font-extrabold text-primary md:text-5xl">Gabaritos corrigidos em segundos</h1>
@@ -175,10 +178,11 @@ function Index() {
         </TabsContent>
 
         <TabsContent value="gabarito" className="space-y-4">
-          <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
             <label className="text-sm font-medium">Número de questões</label>
             <Input type="number" min={1} max={20} value={total} onChange={(e) => setTotal(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} className="w-20" />
             <span className="ml-auto text-sm text-muted-foreground">Total: <b>{score(active, []).max}</b> pts</span>
+            <Button size="sm" variant="outline" onClick={printKey}><Printer className="mr-1 size-4" />Imprimir gabarito</Button>
           </div>
           <div className="space-y-2">
             {active.map((q, i) => (
@@ -219,5 +223,26 @@ function Index() {
         </TabsContent>
       </Tabs>
     </main>
+
+    {/* Folha exclusiva para impressão: invisível na tela, visível só ao imprimir */}
+    <div className="hidden print:block">
+      <header className="mb-4 border-b-2 border-primary pb-2">
+        <h2 className="font-display text-2xl font-extrabold text-primary">Gabarito</h2>
+        <p className="text-sm text-muted-foreground">
+          {total} questões · {score(active, []).max} pts · impresso em {new Date().toLocaleDateString("pt-BR")}
+        </p>
+      </header>
+      <ol className="grid grid-cols-2 gap-x-10 text-sm">
+        {active.map((q, i) => (
+          <li key={i} className="flex items-center justify-between gap-2 border-b border-border py-1">
+            <span className="font-mono font-bold">{i + 1}</span>
+            <span className="font-mono text-base font-bold">{q.key || "—"}</span>
+            <span className="text-muted-foreground">{q.points} pts</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 text-xs text-muted-foreground">Corretor de Gabaritos IA</p>
+    </div>
+    </>
   );
 }

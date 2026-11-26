@@ -166,3 +166,10 @@
   body { font-family: var(--font-sans); background-image: radial-gradient(oklch(0.86 0.02 85 / 0.6) 1px, transparent 1px); background-size: 22px 22px; }
   h1, h2, h3 { font-family: var(--font-display); }
 }
+
+/* Folha de impressão: papel branco, sem o fundo pontilhado nem os avisos na tela. */
+@page { margin: 14mm; }
+@media print {
+  html, body { background-image: none !important; background-color: #fff !important; }
+  [data-sonner-toaster], [data-sonner-portal] { display: none !important; }
+}
