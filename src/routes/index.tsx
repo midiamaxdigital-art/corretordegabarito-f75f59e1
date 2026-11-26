@@ -70,10 +70,16 @@ function Index() {
   const keyReady = active.every((q) => q.key);
   const result = answers ? score(active, answers) : null;
   const [popup, setPopup] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!savedId || !answers || !result) return;
+    setHistory((h) => h.map((e) => (e.id === savedId ? { ...e, student: student || "Sem nome", answers, earned: result.earned, max: result.max, hits: result.hits } : e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedId, student, answers]);
 
   async function onFile(f?: File) {
     if (!f) return;
-    setAnswers(null);
+    setAnswers(null); setSavedId(null);
     const data = await compress(f);
     setImage(data);
     setLoading(true);
@@ -82,6 +88,10 @@ function Index() {
       setAnswers(r.answers);
       setStudent(r.student);
       setDoubtful(r.doubtful);
+      const res = score(active, r.answers);
+      const id = crypto.randomUUID();
+      setHistory((h) => [{ id, date: new Date().toISOString(), student: r.student || "Sem nome", answers: r.answers, earned: res.earned, max: res.max, hits: res.hits, total }, ...h]);
+      setSavedId(id);
       setPopup(true);
       if (r.doubtful.length) toast.warning(`Confira ${r.doubtful.length} questão(ões) marcadas com "?"`);
     } catch (e) {
@@ -91,6 +101,7 @@ function Index() {
 
   function save() {
     if (!answers || !result) return;
+    if (savedId) { toast.success("Correção salva no histórico"); setAnswers(null); setImage(null); setStudent(""); setPopup(false); setSavedId(null); return; }
     setHistory([{ id: crypto.randomUUID(), date: new Date().toISOString(), student: student || "Sem nome", answers, earned: result.earned, max: result.max, hits: result.hits, total }, ...history]);
     toast.success("Correção salva no histórico");
     setAnswers(null); setImage(null); setStudent(""); setPopup(false);
@@ -258,7 +269,10 @@ function Index() {
             <>
               <DialogHeader>
                 <DialogTitle>Resultado da correção</DialogTitle>
-                <DialogDescription>{student || "Sem nome"}</DialogDescription>
+                <DialogDescription>Salvo automaticamente no histórico</DialogDescription>
+              </DialogHeader>
+              <Input value={student} onChange={(e) => setStudent(e.target.value)} placeholder="Nome do aluno" aria-label="Nome do aluno" />
+              <DialogHeader className="hidden">
               </DialogHeader>
               <div className="text-center">
                 <p className="font-display text-5xl font-extrabold text-primary">{result.earned}<span className="text-2xl text-muted-foreground"> / {result.max}</span></p>
@@ -277,7 +291,7 @@ function Index() {
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setPopup(false)}>Revisar</Button>
-                <Button onClick={save}><Save className="mr-1 size-4" />Salvar no histórico</Button>
+                <Button onClick={save}><Check className="mr-1 size-4" />Concluir</Button>
               </DialogFooter>
             </>
           )}
