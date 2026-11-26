@@ -6,6 +6,7 @@ import { Camera, Download, ImageUp, Loader2, Save, Trash2, Check, X, Printer } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { CloudSync } from "@/components/CloudSync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { readAnswerSheet } from "@/lib/grade.functions";
 import { score, type Question } from "@/lib/scoring";
@@ -239,6 +240,7 @@ function Index() {
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-2">
+          <CloudSync history={history} setHistory={setHistory} />
           {history.length === 0 && <p className="py-8 text-center text-muted-foreground">Nenhuma correção salva ainda.</p>}
           {history.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
