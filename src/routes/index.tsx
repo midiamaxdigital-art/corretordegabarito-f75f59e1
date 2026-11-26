@@ -226,22 +226,20 @@ function Index() {
 
     {/* Folha exclusiva para impressão: invisível na tela, visível só ao imprimir */}
     <div className="hidden print:block">
-      <header className="mb-4 border-b-2 border-primary pb-2">
-        <h2 className="font-display text-2xl font-extrabold text-primary">Gabarito</h2>
-        <p className="text-sm text-muted-foreground">
-          {total} questões · {score(active, []).max} pts · impresso em {new Date().toLocaleDateString("pt-BR")}
-        </p>
-      </header>
-      <ol className="grid grid-cols-2 gap-x-10 text-sm">
-        {active.map((q, i) => (
-          <li key={i} className="flex items-center justify-between gap-2 border-b border-border py-1">
-            <span className="font-mono font-bold">{i + 1}</span>
-            <span className="font-mono text-base font-bold">{q.key || "—"}</span>
-            <span className="text-muted-foreground">{q.points} pts</span>
+      <ol className="grid grid-cols-2 gap-x-12 gap-y-2">
+        {active.map((_, i) => (
+          <li key={i} className="flex items-center gap-3">
+            <span className="w-6 text-right font-mono text-sm font-bold">{i + 1}</span>
+            <span className="flex gap-2">
+              {["A", "B", "C", "D", "E"].map((l) => (
+                <span key={l} className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-foreground font-mono text-xs font-bold">
+                  {l}
+                </span>
+              ))}
+            </span>
           </li>
         ))}
       </ol>
-      <p className="mt-4 text-xs text-muted-foreground">Corretor de Gabaritos IA</p>
     </div>
     </>
   );
