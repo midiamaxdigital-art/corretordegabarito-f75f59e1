@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Camera, Download, ImageUp, Loader2, Save, Trash2, Check, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { readAnswerSheet } from "@/lib/grade.functions";
 import { score, type Question } from "@/lib/scoring";
@@ -68,6 +69,7 @@ function Index() {
   const active = questions.slice(0, total);
   const keyReady = active.every((q) => q.key);
   const result = answers ? score(active, answers) : null;
+  const [popup, setPopup] = useState(false);
 
   async function onFile(f?: File) {
     if (!f) return;
@@ -80,6 +82,7 @@ function Index() {
       setAnswers(r.answers);
       setStudent(r.student);
       setDoubtful(r.doubtful);
+      setPopup(true);
       if (r.doubtful.length) toast.warning(`Confira ${r.doubtful.length} questão(ões) marcadas com "?"`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro na leitura");
@@ -90,7 +93,7 @@ function Index() {
     if (!answers || !result) return;
     setHistory([{ id: crypto.randomUUID(), date: new Date().toISOString(), student: student || "Sem nome", answers, earned: result.earned, max: result.max, hits: result.hits, total }, ...history]);
     toast.success("Correção salva no histórico");
-    setAnswers(null); setImage(null); setStudent("");
+    setAnswers(null); setImage(null); setStudent(""); setPopup(false);
   }
 
   const sorted = [...history].sort((a, b) =>
@@ -249,6 +252,37 @@ function Index() {
     </main>
 
     {/* Folha exclusiva para impressão: invisível na tela, visível só ao imprimir */}
+      <Dialog open={popup && !!result} onOpenChange={setPopup}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          {result && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Resultado da correção</DialogTitle>
+                <DialogDescription>{student || "Sem nome"}</DialogDescription>
+              </DialogHeader>
+              <div className="text-center">
+                <p className="font-display text-5xl font-extrabold text-primary">{result.earned}<span className="text-2xl text-muted-foreground"> / {result.max}</span></p>
+                <p className="text-sm text-muted-foreground">{result.hits} de {active.length} acertos</p>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {active.map((q, i) => {
+                  const ok = !!q.key && answers?.[i] === q.key;
+                  return (
+                    <div key={i} className={`rounded-md border p-1 text-center font-mono text-xs ${ok ? "border-success bg-success/10" : "border-destructive bg-destructive/10"}`}>
+                      <b>{i + 1}</b> {answers?.[i] ?? "-"}{doubtful.includes(i) ? " ?" : ""}
+                      {!ok && <div className="text-[10px] text-muted-foreground">certa: {q.key || "—"}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setPopup(false)}>Revisar</Button>
+                <Button onClick={save}><Save className="mr-1 size-4" />Salvar no histórico</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     <div className="hidden print:block">
       <ol
         className="grid gap-x-12"
