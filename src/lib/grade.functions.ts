@@ -14,6 +14,7 @@ export const readAnswerSheet = createServerFn({ method: "POST" })
     const once = async () => {
       const res = await generateResponse({
         model: "openai/gpt-6-astra",
+        reasoning: { effort: "low" },
         input: [
           {
             role: "user",

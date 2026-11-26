@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Camera, ImageUp, Loader2, Save, Trash2, Check, X } from "lucide-react";
+import { Camera, Download, ImageUp, Loader2, Save, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,7 +43,7 @@ function useStored<T>(name: string, init: () => T) {
 async function compress(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-  const scale = Math.min(1, 2000 / Math.max(img.width, img.height));
+  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
   const c = document.createElement("canvas");
   c.width = img.width * scale; c.height = img.height * scale;
   c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
@@ -58,6 +58,7 @@ function Index() {
   const [image, setImage] = useState<string | null>(null);
   const [answers, setAnswers] = useState<string[] | null>(null);
   const [student, setStudent] = useState("");
+  const [sortBy, setSortBy] = useState<"nome" | "nota">("nome");
   const [doubtful, setDoubtful] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const camRef = useRef<HTMLInputElement>(null);
@@ -90,6 +91,23 @@ function Index() {
     setHistory([{ id: crypto.randomUUID(), date: new Date().toISOString(), student: student || "Sem nome", answers, earned: result.earned, max: result.max, hits: result.hits, total }, ...history]);
     toast.success("Correção salva no histórico");
     setAnswers(null); setImage(null); setStudent("");
+  }
+
+  const sorted = [...history].sort((a, b) =>
+    sortBy === "nome" ? a.student.localeCompare(b.student, "pt-BR") || b.earned - a.earned : b.earned - a.earned || a.student.localeCompare(b.student, "pt-BR"),
+  );
+
+  async function exportXlsx() {
+    const XLSX = await import("xlsx");
+    const rows = sorted.map((h) => {
+      const r: Record<string, string | number> = { Aluno: h.student, Nota: h.earned, "Nota máxima": h.max, Acertos: h.hits, Questões: h.total, Data: new Date(h.date).toLocaleString("pt-BR") };
+      h.answers.forEach((a, i) => { r[`Q${i + 1}`] = a; });
+      return r;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Correções");
+    XLSX.writeFile(wb, `correcoes-por-${sortBy}.xlsx`);
   }
 
   const upd = (i: number, p: Partial<Question>) => setQuestions(questions.map((q, j) => (j === i ? { ...q, ...p } : q)));
@@ -180,7 +198,15 @@ function Index() {
 
         <TabsContent value="historico" className="space-y-2">
           {history.length === 0 && <p className="py-8 text-center text-muted-foreground">Nenhuma correção salva ainda.</p>}
-          {history.map((h) => (
+          {history.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">Ordenar por:</span>
+              <Button size="sm" variant={sortBy === "nome" ? "default" : "outline"} onClick={() => setSortBy("nome")}>Nome</Button>
+              <Button size="sm" variant={sortBy === "nota" ? "default" : "outline"} onClick={() => setSortBy("nota")}>Nota</Button>
+              <Button size="sm" variant="secondary" className="ml-auto" onClick={exportXlsx}><Download className="mr-1 size-4" />Baixar planilha</Button>
+            </div>
+          )}
+          {sorted.map((h) => (
             <div key={h.id} className="flex items-center gap-3 rounded-md border bg-card p-3">
               <div className="flex-1">
                 <div className="font-medium">{h.student}</div>
