@@ -4,3 +4,5 @@
 - [x] Planilha do histórico + ordenar por nome/nota; IA mais rápida
 - [x] Revisar erros de foto, armazenamento e exibição; verificar os fluxos afetados
 - [x] Adicionar alternância de tema claro/escuro e preservar impressão legível
+- [ ] Reduzir trabalho de leitura e reforçar validação e conferência das respostas incertas
+- [ ] Testar leitura real, resultado e atualização do histórico

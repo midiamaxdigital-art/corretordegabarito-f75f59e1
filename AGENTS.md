@@ -32,3 +32,5 @@ use the editor.
 - Validate locally restored settings and history with the schemas in `src/lib/stored-state.ts`; damaged browser data must not crash the grader.
 - Apply the selected theme on the document element after hydration; browser storage must not affect the server's initial render.
 - Keep printed answer sheets on dedicated paper/ink tokens so dark mode never changes their legibility.
+- Validate compact AI readings in `answer-reading.ts` and reconcile parallel reads without choosing a disputed alternative; explicit uncertainty requires manual confirmation.
+- Snapshot the grading key when a photo is submitted so later key edits cannot change that correction's score.

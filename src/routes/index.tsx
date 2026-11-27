@@ -73,6 +73,7 @@ function Index() {
   const [student, setStudent] = useState("");
   const [sortBy, setSortBy] = useState<"nome" | "nota">("nome");
   const [doubtful, setDoubtful] = useState<number[]>([]);
+  const [correctionKey, setCorrectionKey] = useState<Question[] | null>(null);
   const [loading, setLoading] = useState(false);
   const camRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -80,7 +81,8 @@ function Index() {
 
   const active = questions.slice(0, total);
   const keyReady = active.every((q) => q.key);
-  const result = answers ? score(active, answers) : null;
+  const gradingKey = correctionKey ?? active;
+  const result = answers ? score(gradingKey, answers) : null;
   const [popup, setPopup] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   useEffect(() => {
@@ -91,7 +93,7 @@ function Index() {
 
   async function onFile(f?: File) {
     if (!f || loading || !keyReady) return;
-    setAnswers(null); setSavedId(null); setImage(null); setDoubtful([]); setPopup(false);
+    setAnswers(null); setSavedId(null); setImage(null); setDoubtful([]); setPopup(false); setCorrectionKey(active.map((q) => ({ ...q })));
     setLoading(true);
     try {
       const data = await compress(f);
@@ -113,6 +115,7 @@ function Index() {
 
   function save() {
     if (!answers || !result) return;
+    if (doubtful.length) { toast.warning("Confira as questões marcadas com ? antes de concluir."); setPopup(false); return; }
     if (savedId) { toast.success("Correção salva no histórico"); setAnswers(null); setImage(null); setStudent(""); setPopup(false); setSavedId(null); return; }
     setHistory([{ id: crypto.randomUUID(), date: new Date().toISOString(), student: student || "Sem nome", answers, earned: result.earned, max: result.max, hits: result.hits, total }, ...history]);
     toast.success("Correção salva no histórico");
@@ -186,10 +189,10 @@ function Index() {
                 </div>
                 <div className="text-right">
                   <div className="font-display text-4xl font-extrabold text-primary">{result.earned}<span className="text-lg text-muted-foreground">/{result.max}</span></div>
-                  <div className="text-sm text-muted-foreground">{result.hits} de {total} acertos</div>
+                  <div className="text-sm text-muted-foreground">{result.hits} de {gradingKey.length} acertos</div>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Confira a leitura: toque numa letra para corrigir se a IA errou.</p>
+              {doubtful.length > 0 && <p className="rounded-md border border-accent bg-accent/20 p-3 text-sm" role="status">Nota provisória · {doubtful.length} questão(ões) pendente(s) de conferência</p>}
               <div className="grid gap-2 sm:grid-cols-2">
                 {answers.map((a, i) => (
                   <div key={i} className={`flex items-center gap-2 rounded-md border p-2 ${result.results[i] ? "border-success/50 bg-success/10" : "border-destructive/40 bg-destructive/10"}`}>
@@ -201,11 +204,11 @@ function Index() {
                       ))}
                     </div>
                     {doubtful.includes(i) && <span className="rounded bg-accent px-1 font-mono text-xs font-bold" title="Leituras divergentes, confira">?</span>}
-                    <span className="ml-auto font-mono text-xs text-muted-foreground">({active[i]?.key})</span>
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">({gradingKey[i]?.key})</span>
                   </div>
                 ))}
               </div>
-              <Button onClick={save} className="w-full"><Save className="mr-2" />Salvar correção</Button>
+              <Button onClick={save} disabled={doubtful.length > 0} className="w-full"><Save className="mr-2" />Salvar correção</Button>
             </section>
           )}
         </TabsContent>
@@ -285,17 +288,17 @@ function Index() {
             <>
               <DialogHeader>
                 <DialogTitle>Resultado da correção</DialogTitle>
-                <DialogDescription>Salvo automaticamente no histórico</DialogDescription>
+                <DialogDescription>{doubtful.length ? `Nota provisória · ${doubtful.length} questão(ões) pendente(s) de conferência` : "Salvo automaticamente no histórico"}</DialogDescription>
               </DialogHeader>
               <Input value={student} onChange={(e) => setStudent(e.target.value)} placeholder="Nome do aluno" aria-label="Nome do aluno" />
               <DialogHeader className="hidden">
               </DialogHeader>
               <div className="text-center">
                 <p className="font-display text-5xl font-extrabold text-primary">{result.earned}<span className="text-2xl text-muted-foreground"> / {result.max}</span></p>
-                <p className="text-sm text-muted-foreground">{result.hits} de {active.length} acertos</p>
+                <p className="text-sm text-muted-foreground">{result.hits} de {gradingKey.length} acertos</p>
               </div>
               <div className="grid grid-cols-5 gap-2">
-                {active.map((q, i) => {
+                {gradingKey.map((q, i) => {
                   const ok = !!q.key && answers?.[i] === q.key;
                   return (
                     <div key={i} className={`rounded-md border p-1 text-center font-mono text-xs ${ok ? "border-success bg-success/10" : "border-destructive bg-destructive/10"}`}>
@@ -307,7 +310,7 @@ function Index() {
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setPopup(false)}>Revisar</Button>
-                <Button onClick={save}><Check className="mr-1 size-4" />Concluir</Button>
+                <Button onClick={save} disabled={doubtful.length > 0}><Check className="mr-1 size-4" />Concluir</Button>
               </DialogFooter>
             </>
           )}
