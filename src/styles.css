@@ -55,6 +55,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-paper: var(--paper);
+  --color-print-ink: var(--print-ink);
   --font-display: "Fraunces", serif;
   --font-sans: "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
@@ -78,6 +80,9 @@
 }
 
 :root {
+  color-scheme: light;
+  --paper: oklch(1 0 0);
+  --print-ink: oklch(0.15 0 0);
   --radius: 0.5rem;
   --background: oklch(0.97 0.012 85);
   --foreground: oklch(0.22 0.03 255);
@@ -97,6 +102,7 @@
   --destructive-foreground: oklch(0.98 0.01 85);
   --success: oklch(0.58 0.14 150);
   --success-foreground: oklch(0.98 0.01 85);
+  --paper-dot: oklch(0.86 0.02 85 / 0.6);
   --border: oklch(0.86 0.02 85);
   --input: oklch(0.86 0.02 85);
   --ring: oklch(0.32 0.09 255);
@@ -117,22 +123,25 @@
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.129 0.042 264.695);
+  --paper-dot: oklch(0.38 0.015 255 / 0.35);
+  --background: oklch(0.18 0.008 255);
   --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
+  --card: oklch(0.23 0.01 255);
   --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
+  --popover: oklch(0.23 0.01 255);
   --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(0.82 0.08 240);
+  --primary-foreground: oklch(0.18 0.008 255);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
   --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
+  --accent: oklch(0.73 0.12 85);
   --accent-foreground: oklch(0.984 0.003 247.858);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.984 0.003 247.858);
+  --success: oklch(0.75 0.14 150);
+  --success-foreground: oklch(0.18 0.008 255);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
@@ -163,13 +172,14 @@
 }
 
 @layer base {
-  body { font-family: var(--font-sans); background-image: radial-gradient(oklch(0.86 0.02 85 / 0.6) 1px, transparent 1px); background-size: 22px 22px; }
+  body { font-family: var(--font-sans); background-image: radial-gradient(var(--paper-dot) 1px, transparent 1px); background-size: 22px 22px; }
   h1, h2, h3 { font-family: var(--font-display); }
 }
 
 /* Folha de impressão: papel branco, sem o fundo pontilhado nem os avisos na tela. */
 @page { margin: 14mm; }
 @media print {
-  html, body { background-image: none !important; background-color: #fff !important; }
+  html, body { color-scheme: light !important; background-image: none !important; background-color: var(--paper) !important; color: var(--print-ink) !important; }
+  .print-sheet { color: var(--print-ink); background: var(--paper); }
   [data-sonner-toaster], [data-sonner-portal] { display: none !important; }
 }

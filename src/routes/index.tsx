@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Camera, Download, ImageUp, Loader2, Save, Trash2, Check, X, Printer } from "lucide-react";
+import type { z } from "zod";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { restoreStored, questionsSchema, totalSchema, historySchema, columnsSchema, sizeSchema, gapSchema, verticalSchema } from "@/lib/stored-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -30,33 +33,41 @@ type Record_ = { id: string; date: string; student: string; answers: string[]; e
 
 const defaultKey = (): Question[] => Array.from({ length: 20 }, () => ({ key: "", points: 1 }));
 
-function useStored<T>(name: string, init: () => T) {
+function useStored<T>(name: string, init: () => T, schema: z.ZodType<T>) {
   const [v, setV] = useState<T>(init);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    const raw = localStorage.getItem(name);
-    if (raw) try { setV(JSON.parse(raw)); } catch { /* ignore */ }
+    try { setV((current) => restoreStored(localStorage.getItem(name), schema, current)); }
+    catch { toast.warning("O armazenamento deste aparelho está indisponível."); }
     setReady(true);
-  }, [name]);
-  useEffect(() => { if (ready) localStorage.setItem(name, JSON.stringify(v)); }, [name, v, ready]);
+  }, [name, schema]);
+  useEffect(() => {
+    if (!ready) return;
+    try { localStorage.setItem(name, JSON.stringify(v)); }
+    catch { toast.error("Não foi possível salvar neste aparelho. Verifique o espaço disponível."); }
+  }, [name, v, ready]);
   return [v, setV] as const;
 }
 
 async function compress(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("Envie um arquivo de imagem.");
   const url = URL.createObjectURL(file);
-  const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  try {
+  const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("Não foi possível abrir a foto. Envie uma imagem JPG ou PNG válida.")); i.src = url; });
   const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
   const c = document.createElement("canvas");
   c.width = img.width * scale; c.height = img.height * scale;
-  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-  URL.revokeObjectURL(url);
+  const context = c.getContext("2d");
+  if (!context) throw new Error("Não foi possível preparar a foto neste aparelho.");
+  context.drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL("image/jpeg", 0.88);
+  } finally { URL.revokeObjectURL(url); }
 }
 
 function Index() {
-  const [questions, setQuestions] = useStored<Question[]>("gabarito-key", defaultKey);
-  const [total, setTotal] = useStored<number>("gabarito-total", () => 20);
-  const [history, setHistory] = useStored<Record_[]>("gabarito-history", () => []);
+  const [questions, setQuestions] = useStored<Question[]>("gabarito-key", defaultKey, questionsSchema);
+  const [total, setTotal] = useStored<number>("gabarito-total", () => 20, totalSchema);
+  const [history, setHistory] = useStored<Record_[]>("gabarito-history", () => [], historySchema);
   const [image, setImage] = useState<string | null>(null);
   const [answers, setAnswers] = useState<string[] | null>(null);
   const [student, setStudent] = useState("");
@@ -79,12 +90,12 @@ function Index() {
   }, [savedId, student, answers]);
 
   async function onFile(f?: File) {
-    if (!f) return;
-    setAnswers(null); setSavedId(null);
-    const data = await compress(f);
-    setImage(data);
+    if (!f || loading || !keyReady) return;
+    setAnswers(null); setSavedId(null); setImage(null); setDoubtful([]); setPopup(false);
     setLoading(true);
     try {
+      const data = await compress(f);
+      setImage(data);
       const r = await read({ data: { image: data, total } });
       setAnswers(r.answers);
       setStudent(r.student);
@@ -128,16 +139,19 @@ function Index() {
   const upd = (i: number, p: Partial<Question>) => setQuestions(questions.map((q, j) => (j === i ? { ...q, ...p } : q)));
 
   const printKey = () => window.print();
-  const [pCols, setPCols] = useStored("print-cols", () => 2);
-  const [pSize, setPSize] = useStored("print-size", () => 28);
-  const [pGap, setPGap] = useStored("print-gap", () => 8);
-  const [pVertical, setPVertical] = useStored("print-vertical", () => true);
+  const [pCols, setPCols] = useStored("print-cols", () => 2, columnsSchema);
+  const [pSize, setPSize] = useStored("print-size", () => 28, sizeSchema);
+  const [pGap, setPGap] = useStored("print-gap", () => 8, gapSchema);
+  const [pVertical, setPVertical] = useStored("print-vertical", () => true, verticalSchema);
 
   return (
     <>
     <main className="mx-auto max-w-3xl px-4 py-8 print:hidden">
       <header className="mb-6">
-        <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-destructive"><Check className="size-3" />Corretor</p>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-destructive"><Check className="size-3" />Corretor</p>
+          <ThemeToggle />
+        </div>
         <h1 className="text-4xl font-extrabold text-primary md:text-5xl">Gabaritos corrigidos em segundos</h1>
         <p className="mt-2 text-muted-foreground">Defina o gabarito, fotografe as respostas e a IA corrige com dupla verificação.</p>
       </header>
@@ -183,7 +197,7 @@ function Index() {
                     {result.results[i] ? <Check className="size-4 text-success" /> : <X className="size-4 text-destructive" />}
                     <div className="flex gap-1">
                       {[...LETTERS, "-"].map((l) => (
-                        <button key={l} onClick={() => { setAnswers(answers.map((x, j) => (j === i ? l : x))); setDoubtful(doubtful.filter((d) => d !== i)); }} className={`size-7 rounded-full border font-mono text-xs ${a === l ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}>{l}</button>
+                        <Button variant="outline" size="icon" aria-label={`Questão ${i + 1}: resposta ${l}`} aria-pressed={a === l} key={l} onClick={() => { setAnswers(answers.map((x, j) => (j === i ? l : x))); setDoubtful(doubtful.filter((d) => d !== i)); }} className={`size-7 rounded-full p-0 font-mono text-xs ${a === l ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}>{l}</Button>
                       ))}
                     </div>
                     {doubtful.includes(i) && <span className="rounded bg-accent px-1 font-mono text-xs font-bold" title="Leituras divergentes, confira">?</span>}
@@ -218,7 +232,7 @@ function Index() {
               <span className="w-8 text-center font-mono">{pGap}</span>
               <Button size="sm" variant="outline" onClick={() => setPGap(Math.min(40, pGap + 2))}>+</Button>
             </label>
-            <label className="flex items-center gap-2">Ordem
+            <label className="flex flex-wrap items-center gap-2">Ordem
               <Button size="sm" variant={pVertical ? "default" : "outline"} onClick={() => setPVertical(true)}>Um abaixo do outro</Button>
               <Button size="sm" variant={!pVertical ? "default" : "outline"} onClick={() => setPVertical(false)}>Lado a lado</Button>
             </label>
@@ -229,7 +243,7 @@ function Index() {
                 <span className="w-6 font-mono font-bold">{i + 1}</span>
                 <div className="flex gap-1">
                   {LETTERS.map((l) => (
-                    <button key={l} onClick={() => upd(i, { key: l })} className={`size-8 rounded-full border font-mono text-sm ${q.key === l ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}>{l}</button>
+                    <Button variant="outline" size="icon" aria-label={`Questão ${i + 1}: gabarito ${l}`} aria-pressed={q.key === l} key={l} onClick={() => upd(i, { key: l })} className={`size-8 rounded-full p-0 font-mono text-sm ${q.key === l ? "border-primary bg-primary text-primary-foreground" : "bg-card"}`}>{l}</Button>
                   ))}
                 </div>
                 <Input type="number" step="0.25" min={0} value={q.points} onChange={(e) => upd(i, { points: Math.max(0, Number(e.target.value) || 0) })} className="ml-auto w-20" aria-label={`Pontos da questão ${i + 1}`} />
@@ -252,9 +266,9 @@ function Index() {
           )}
           {sorted.map((h) => (
             <div key={h.id} className="flex items-center gap-3 rounded-md border bg-card p-3">
-              <div className="flex-1">
-                <div className="font-medium">{h.student}</div>
-                <div className="text-xs text-muted-foreground">{new Date(h.date).toLocaleString("pt-BR")} · {h.hits}/{h.total} acertos · {h.answers.join(" ")}</div>
+              <div className="min-w-0 flex-1">
+                <div className="break-words font-medium">{h.student}</div>
+                <div className="break-words text-xs text-muted-foreground">{new Date(h.date).toLocaleString("pt-BR")} · {h.hits}/{h.total} acertos · {h.answers.join(" ")}</div>
               </div>
               <div className="font-display text-2xl font-extrabold text-primary">{h.earned}<span className="text-sm text-muted-foreground">/{h.max}</span></div>
               <Button size="icon" variant="ghost" aria-label="Excluir" onClick={() => setHistory(history.filter((x) => x.id !== h.id))}><Trash2 /></Button>
@@ -299,7 +313,7 @@ function Index() {
           )}
         </DialogContent>
       </Dialog>
-    <div className="hidden print:block">
+    <div className="print-sheet hidden print:block">
       <ol
         className="grid gap-x-12"
         style={{
@@ -313,7 +327,7 @@ function Index() {
             <span className="text-right font-mono font-bold" style={{ width: pSize, fontSize: pSize * 0.5 }}>{i + 1}</span>
             <span className="flex" style={{ gap: pSize * 0.25 }}>
               {["A", "B", "C", "D", "E"].map((l) => (
-                <span key={l} className="flex items-center justify-center rounded-full border-2 border-foreground font-mono font-bold" style={{ width: pSize, height: pSize, fontSize: pSize * 0.42 }}>
+                <span key={l} className="flex items-center justify-center rounded-full border-2 border-print-ink font-mono font-bold" style={{ width: pSize, height: pSize, fontSize: pSize * 0.42 }}>
                   {l}
                 </span>
               ))}

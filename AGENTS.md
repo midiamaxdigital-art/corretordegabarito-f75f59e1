@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Validate locally restored settings and history with the schemas in `src/lib/stored-state.ts`; damaged browser data must not crash the grader.
+- Apply the selected theme on the document element after hydration; browser storage must not affect the server's initial render.
+- Keep printed answer sheets on dedicated paper/ink tokens so dark mode never changes their legibility.
